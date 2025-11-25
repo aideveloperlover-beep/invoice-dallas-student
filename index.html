@@ -1,0 +1,2234 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>School Fee Invoice Generator - KIIT Style</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Ephesis&display=swap"
+      rel="stylesheet"
+    />
+    <!-- Libraries for exporting -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <!-- Libraries for Zipping -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <style>
+      body {
+        font-family: "Inter", sans-serif;
+        background-color: #f8fafc;
+      }
+      .invoice-container {
+        background-color: white;
+        border: 2px dashed #d1d5db;
+        border-radius: 8px;
+        padding: 20px;
+        margin: 0 auto;
+        max-width: 250mm;
+        min-height: 297mm;
+        box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+      }
+      .blue-header {
+        background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
+        color: white;
+        padding: 15px 20px;
+        margin: -20px -20px 20px -20px;
+        border-radius: 6px 6px 0 0;
+      }
+      .indian-flag {
+        width: 24px;
+        height: 16px;
+        background: linear-gradient(
+          to bottom,
+          #ff9933 33%,
+          #ffffff 33%,
+          #ffffff 66%,
+          #138808 66%
+        );
+        border: 1px solid #ddd;
+        display: inline-block;
+        margin: 0 8px;
+      }
+
+      /* SVG Flag Styles */
+      .flag-svg {
+        display: inline-block;
+        margin: 0 8px;
+        width: 24px;
+        height: 16px;
+      }
+      .flag-svg img,
+      .flag-img {
+        width: 24px;
+        height: 16px;
+        display: inline-block;
+        margin: 0;
+        border: 1px solid #ddd;
+        border-radius: 2px;
+      }
+      .institute-logo {
+        width: 80px;
+        height: 80px;
+        border: 2px solid #10b981;
+        border-radius: 50%;
+        background: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        color: #10b981;
+        font-size: 14px;
+        text-align: center;
+        line-height: 1.2;
+      }
+      .dotted-border {
+        border: 2px dashed #d1d5db;
+        border-radius: 8px;
+        padding: 20px;
+        margin: 15px 0;
+      }
+      .fee-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 15px 0;
+      }
+      .fee-table th,
+      .fee-table td {
+        border: 1px solid #374151;
+        padding: 8px 12px;
+        text-align: left;
+      }
+      .fee-table th {
+        background-color: #f3f4f6;
+        font-weight: 600;
+      }
+      .payment-status {
+        background-color: #dcfce7;
+        border: 1px solid #16a34a;
+        border-radius: 4px;
+        padding: 8px 16px;
+        display: inline-block;
+        margin: 10px 0;
+      }
+      .paid-status {
+        background-color: #10b981;
+        color: white;
+        font-weight: bold;
+        padding: 6px 14px;
+        border-radius: 4px;
+        font-size: 12px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        white-space: nowrap;
+        margin: 2px 0;
+        position: relative;
+        z-index: 1;
+        vertical-align: middle;
+        line-height: 1;
+        min-width: 60px;
+        height: 28px;
+        box-sizing: border-box;
+      }
+
+      .paid-status-large {
+        background-color: #10b981;
+        color: white;
+        font-weight: bold;
+        padding: 12px 24px;
+        border-radius: 6px;
+        font-size: 16px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        white-space: nowrap;
+        margin: 4px 0;
+        position: relative;
+        z-index: 1;
+        vertical-align: middle;
+        line-height: 1;
+        min-width: 140px;
+        height: 48px;
+        box-sizing: border-box;
+      }
+
+      /* Additional centering fixes for download formats */
+      .paid-status,
+      .paid-status-large {
+        font-family: "Inter", sans-serif;
+        letter-spacing: 0.5px;
+        text-rendering: optimizeLegibility;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+      }
+
+      @media print {
+        body * {
+          visibility: hidden;
+        }
+        .invoice-preview-panel,
+        .invoice-container,
+        .invoice-container * {
+          visibility: visible;
+        }
+        .invoice-container {
+          position: absolute;
+          left: 0;
+          top: 0;
+          width: 100%;
+          margin: 0;
+          padding: 20px;
+          border: none;
+          box-shadow: none;
+        }
+        .invoice-preview-panel {
+          padding: 0;
+          box-shadow: none;
+          background: none;
+        }
+        .form-container,
+        #print-btn-container,
+        #generate-random-data-btn-container,
+        #logo-upload-btn-container {
+          display: none;
+        }
+      }
+    </style>
+  </head>
+  <body class="bg-gray-50">
+    <!-- Loading Overlay -->
+    <div
+      id="loading-overlay"
+      class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center hidden"
+    >
+      <div
+        class="animate-spin rounded-full h-32 w-32 border-t-2 border-b-2 border-white"
+      ></div>
+    </div>
+
+    <div class="container mx-auto p-4 lg:p-8">
+      <div class="flex flex-col lg:flex-row gap-8">
+        <!-- Left Panel: Invoice Preview -->
+        <div
+          class="w-full lg:w-3/5 bg-white p-6 rounded-xl shadow-lg invoice-preview-panel"
+        >
+          <div id="invoice-to-export" class="invoice-container">
+            <!-- Blue Header with Country Flags -->
+            <div class="blue-header text-center">
+              <div class="flex items-center justify-center mb-2">
+                <div id="flag-left" class="flag-svg">
+                  <img
+                    src="flags/usa.svg"
+                    alt="USA flag"
+                    class="flag-img"
+                  />
+                </div>
+                <h1 class="text-xl font-bold mx-4">SCHOOL FEE INVOICE</h1>
+                <div id="flag-right" class="flag-svg">
+                  <img
+                    src="flags/usa.svg"
+                    alt="USA flag"
+                    class="flag-img"
+                  />
+                </div>
+              </div>
+              <h2 id="institution-name" class="text-2xl font-bold">
+                DALLAS COLLEGE
+              </h2>
+            </div>
+
+            <!-- Institution Details Section -->
+            <div class="dotted-border">
+              <div class="flex items-start gap-4 mb-4">
+                <div class="institute-logo" id="institute-logo">
+                  <img
+                    id="invoice-logo"
+                    src="dc-logo.png"
+                    alt="Institute Logo"
+                    class="w-full h-full object-contain rounded-full"
+                  />
+                  <span id="logo-text" class="hidden">KIIT</span>
+                </div>
+                <div class="flex-1">
+                  <h3 id="full-institution-name" class="text-lg font-bold mb-2">
+                    Dallas College
+                  </h3>
+                  <p
+                    id="institution-address"
+                    class="text-sm text-gray-600 mb-1"
+                  >
+                    4849 W. Illinois Ave. Dallas, TX 75211
+                  </p>
+                  <p id="institution-contact" class="text-sm text-gray-600">
+                    Phone: 972-860-8680
+                  </p>
+                </div>
+              </div>
+
+              <!-- Invoice Details -->
+              <div class="grid grid-cols-2 gap-6 text-sm">
+                <div>
+                  <p>
+                    <strong>Invoice No:</strong>
+                    <span id="invoice-no">INV-2025-46553</span>
+                  </p>
+                  <p>
+                    <strong>Invoice Date:</strong>
+                    <span id="invoice-date">29/10/2025</span>
+                  </p>
+                  <p>
+                    <strong>Due Date:</strong>
+                    <span id="due-date">29/10/2025</span>
+                  </p>
+                </div>
+                <div class="text-right">
+                  <p>
+                    <strong>Academic Year:</strong>
+                    <span id="academic-year">2025-2026</span>
+                  </p>
+                  <p class="mt-2 flex items-center justify-end gap-2">
+                    <strong>Status:</strong>
+                    <span class="paid-status" id="payment-status">PAID</span>
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Bill To Section -->
+            <div class="mb-6">
+              <h4 class="font-bold text-gray-800 mb-3">BILL TO:</h4>
+              <div class="bg-gray-50 p-4 rounded-lg text-sm">
+                <p>
+                  <strong>Parent/Guardian:</strong>
+                  <span id="parent-name">Jennifer Johnson</span>
+                </p>
+                <p>
+                  <strong>Student Name:</strong>
+                  <span id="student-name">Michael Johnson</span>
+                </p>
+                <p>
+                  <strong>Class:</strong> <span id="student-class">11th</span> |
+                  <strong>Section:</strong>
+                  <span id="student-section">B</span> |
+                  <strong>Roll No:</strong> <span id="roll-no">15262</span>
+                </p>
+              </div>
+            </div>
+
+            <!-- Fee Breakdown Table -->
+            <table class="fee-table">
+              <thead>
+                <tr>
+                  <th class="w-1/3">Description</th>
+                  <th class="w-1/3">Period</th>
+                  <th class="w-1/3 text-right">Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td id="fee-description">Tuition Fee</td>
+                  <td id="fee-period">2025-2026</td>
+                  <td id="fee-amount" class="text-right">$3,850.00</td>
+                </tr>
+              </tbody>
+              <tfoot>
+                <tr class="bg-gray-100 font-bold">
+                  <td colspan="2">Total Amount</td>
+                  <td id="total-amount" class="text-right">$3,850.00</td>
+                </tr>
+              </tfoot>
+            </table>
+
+            <!-- Amount in Words -->
+            <div class="mb-6 p-4 bg-blue-50 rounded-lg">
+              <p><strong>Amount in Words:</strong></p>
+              <p id="amount-words" class="text-lg font-medium text-blue-800">
+                Three Thousand Eight Hundred Fifty Dollars Only
+              </p>
+            </div>
+
+            <!-- Payment Information and Status -->
+            <div class="grid grid-cols-2 gap-6 mb-8">
+              <div class="payment-status">
+                <h4 class="font-bold text-gray-800 mb-2">
+                  Payment Information
+                </h4>
+                <p>
+                  <strong>Payment Mode:</strong>
+                  <span id="payment-mode">Cheque</span>
+                </p>
+                <p>
+                  <strong>Reference:</strong>
+                  <span id="payment-reference"
+                    >Cheque No: 840504, ICICI Bank</span
+                  >
+                </p>
+              </div>
+              <div class="text-center">
+                <h4 class="font-bold text-green-700 mb-3">Payment Status</h4>
+                <div class="flex justify-center items-center mb-3">
+                  <div class="paid-status-large">PAID IN FULL</div>
+                </div>
+                <p class="text-sm text-gray-600 mt-2">
+                  <strong>Payment Date:</strong>
+                  <span id="payment-date">29/10/2025</span>
+                </p>
+              </div>
+            </div>
+
+            <!-- Footer with Signature and Disclaimer -->
+            <div class="grid grid-cols-2 gap-6 mt-8">
+              <div>
+                <!-- Disclaimer -->
+                <div
+                  class="p-2 bg-gray-100 text-gray-600 text-center text-xs rounded border border-gray-200"
+                >
+                  <p class="italic">
+                    This is a computer generated receipt and does not require a
+                    physical signature.
+                  </p>
+                  <p class="italic">
+                    For any queries, please contact the Dallas College administration
+                    office.
+                  </p>
+                </div>
+
+                <!-- Bottom Footer -->
+                <div
+                  class="mt-2 p-2 bg-gray-50 text-gray-500 text-center text-xs border border-gray-200"
+                >
+                  <p class="font-normal">
+                    This is a computer-generated invoice and is valid with
+                    official stamp and signature
+                  </p>
+                </div>
+              </div>
+              <div class="text-center">
+                <canvas
+                  id="signature-canvas"
+                  class="mx-auto block mb-2"
+                  width="200"
+                  height="60"
+                ></canvas>
+                <div class="border-t-2 border-black pt-2 mx-8">
+                  <p class="font-bold">Authorized Signatory</p>
+                  <p class="text-sm">Principal/Accountant</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Panel: Data Entry Form -->
+        <div class="w-full lg:w-2/5 form-container">
+          <div class="bg-slate-800 text-white p-8 rounded-lg shadow-lg h-full">
+            <div id="logo-upload-btn-container" class="text-center mb-6">
+              <label
+                for="logo-upload"
+                class="cursor-pointer inline-block bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-2 px-4 rounded"
+              >
+                Upload Logo
+              </label>
+              <input
+                id="logo-upload"
+                type="file"
+                class="hidden"
+                accept="image/*"
+              />
+            </div>
+
+            <h2 class="text-2xl font-bold mb-4 border-b border-slate-600 pb-4">
+              Invoice Information
+            </h2>
+
+            <div id="generate-random-data-btn-container" class="mb-6">
+              <button
+                type="button"
+                id="generate-random-data-btn"
+                class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded transition-colors duration-300"
+              >
+                Generate Random Data
+              </button>
+            </div>
+
+            <!-- Auto Generate Multiple Students Section -->
+            <div
+              class="mb-6 p-4 bg-slate-700 rounded-lg border border-slate-600"
+            >
+              <h3 class="text-lg font-semibold text-cyan-400 mb-3">
+                Auto Generate Multiple Students
+              </h3>
+              <div class="space-y-4">
+                <div>
+                  <label
+                    for="student-count"
+                    class="block text-sm font-medium text-slate-300"
+                    >Number of Students (1-20)</label
+                  >
+                  <input
+                    type="number"
+                    id="student-count"
+                    min="1"
+                    max="20"
+                    value="1"
+                    class="mt-1 block w-full bg-slate-600 border border-slate-500 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-cyan-500 focus:border-cyan-500 text-slate-300"
+                  />
+                </div>
+                <button
+                  type="button"
+                  id="auto-generate-multiple-btn"
+                  class="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded transition-colors duration-300"
+                >
+                  Auto Generate Multiple Invoices
+                </button>
+                <div id="generation-progress" class="hidden">
+                  <div class="bg-slate-600 rounded-full h-2">
+                    <div
+                      id="progress-bar"
+                      class="bg-purple-600 h-2 rounded-full transition-all duration-300"
+                      style="width: 0%"
+                    ></div>
+                  </div>
+                  <p id="progress-text" class="text-sm text-slate-300 mt-2">
+                    Generating invoices...
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <form id="invoice-form" class="space-y-6">
+              <!-- Display Options -->
+              <div>
+                <h3 class="text-lg font-semibold text-cyan-400 mb-3">
+                  Display Options
+                </h3>
+                <div class="space-y-4">
+                  <div class="flex items-center">
+                    <input
+                      type="checkbox"
+                      id="show-flags"
+                      checked
+                      class="h-4 w-4 text-cyan-600 focus:ring-cyan-500 border-slate-600 rounded bg-slate-700"
+                    />
+                    <label
+                      for="show-flags"
+                      class="ml-2 block text-sm text-slate-300"
+                      >Show Country Flags in Header</label
+                    >
+                  </div>
+                  <div>
+                    <label
+                      for="country-select"
+                      class="block text-sm font-medium text-slate-300"
+                      >Select Country Flag</label
+                    >
+                    <select
+                      id="country-select"
+                      class="mt-1 block w-full bg-slate-700 border border-slate-600 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-cyan-500 focus:border-cyan-500 text-slate-300"
+                    >
+                      <option value="india">India</option>
+                      <option value="usa" selected>USA</option>
+                      <option value="uk">UK</option>
+                      <option value="japan">Japan</option>
+                      <option value="cambodia">Cambodia</option>
+                      <option value="indonesia">Indonesia</option>
+                      <option value="korea">Korea</option>
+                      <option value="brazil">Brazil</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label
+                      for="currency-select"
+                      class="block text-sm font-medium text-slate-300"
+                      >Select Currency</label
+                    >
+                    <select
+                      id="currency-select"
+                      class="mt-1 block w-full bg-slate-700 border border-slate-600 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-cyan-500 focus:border-cyan-500 text-slate-300"
+                    >
+                      <option value="INR">Indian Rupee (₹)</option>
+                      <option value="USD" selected>US Dollar ($)</option>
+                      <option value="GBP">British Pound (£)</option>
+                      <option value="JPY">Japanese Yen (¥)</option>
+                      <option value="KHR">Cambodian Riel (៛)</option>
+                      <option value="IDR">Indonesian Rupiah (Rp)</option>
+                      <option value="KRW">South Korean Won (₩)</option>
+                      <option value="BRL">Brazilian Real (R$)</option>
+                      <option value="EUR">Euro (€)</option>
+                      <option value="CAD">Canadian Dollar (C$)</option>
+                      <option value="AUD">Australian Dollar (A$)</option>
+                      <option value="SGD">Singapore Dollar (S$)</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Institution Info -->
+              <div>
+                <h3 class="text-lg font-semibold text-cyan-400 mb-3">
+                  Institution Information
+                </h3>
+                <div class="space-y-4">
+                  <div>
+                    <label
+                      for="institution_name"
+                      class="block text-sm font-medium text-slate-300"
+                      >Institution Name</label
+                    >
+                    <input
+                      type="text"
+                      id="institution_name"
+                      value="DALLAS COLLEGE"
+                      class="mt-1 block w-full bg-slate-700 border border-slate-600 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-cyan-500 focus:border-cyan-500"
+                    />
+                  </div>
+                  <div>
+                    <label
+                      for="full_institution_name"
+                      class="block text-sm font-medium text-slate-300"
+                      >Full Name</label
+                    >
+                    <input
+                      type="text"
+                      id="full_institution_name"
+                      value="Dallas College"
+                      class="mt-1 block w-full bg-slate-700 border border-slate-600 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-cyan-500 focus:border-cyan-500"
+                    />
+                  </div>
+                  <div>
+                    <label
+                      for="institution_address"
+                      class="block text-sm font-medium text-slate-300"
+                      >Address</label
+                    >
+                    <input
+                      type="text"
+                      id="institution_address"
+                      value="4849 W. Illinois Ave. Dallas, TX 75211"
+                      class="mt-1 block w-full bg-slate-700 border border-slate-600 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-cyan-500 focus:border-cyan-500"
+                    />
+                  </div>
+                  <div>
+                    <label
+                      for="institution_contact"
+                      class="block text-sm font-medium text-slate-300"
+                      >Contact</label
+                    >
+                    <input
+                      type="text"
+                      id="institution_contact"
+                      value="Phone: 972-860-8680"
+                      class="mt-1 block w-full bg-slate-700 border border-slate-600 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-cyan-500 focus:border-cyan-500"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <!-- Invoice Details -->
+              <div>
+                <h3 class="text-lg font-semibold text-cyan-400 mb-3">
+                  Invoice Details
+                </h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label
+                      for="invoice_no"
+                      class="block text-sm font-medium text-slate-300"
+                      >Invoice No.</label
+                    >
+                    <input
+                      type="text"
+                      id="invoice_no"
+                      value="INV-2025-46553"
+                      class="mt-1 block w-full bg-slate-700 border border-slate-600 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-cyan-500 focus:border-cyan-500"
+                    />
+                  </div>
+                  <div>
+                    <label
+                      for="invoice_date"
+                      class="block text-sm font-medium text-slate-300"
+                      >Invoice Date</label
+                    >
+                    <input
+                      type="text"
+                      id="invoice_date"
+                      value="29/10/2025"
+                      class="mt-1 block w-full bg-slate-700 border border-slate-600 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-cyan-500 focus:border-cyan-500"
+                    />
+                  </div>
+                  <div>
+                    <label
+                      for="due_date"
+                      class="block text-sm font-medium text-slate-300"
+                      >Due Date</label
+                    >
+                    <input
+                      type="text"
+                      id="due_date"
+                      value="29/10/2025"
+                      class="mt-1 block w-full bg-slate-700 border border-slate-600 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-cyan-500 focus:border-cyan-500"
+                    />
+                  </div>
+                  <div>
+                    <label
+                      for="academic_year_input"
+                      class="block text-sm font-medium text-slate-300"
+                      >Academic Year</label
+                    >
+                    <input
+                      type="text"
+                      id="academic_year_input"
+                      value="2025-2026"
+                      class="mt-1 block w-full bg-slate-700 border border-slate-600 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-cyan-500 focus:border-cyan-500"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <!-- Student Info -->
+              <div>
+                <h3 class="text-lg font-semibold text-cyan-400 mb-3">
+                  Student Information
+                </h3>
+                <div class="space-y-4">
+                  <div>
+                    <label
+                      for="parent_name"
+                      class="block text-sm font-medium text-slate-300"
+                      >Parent/Guardian Name</label
+                    >
+                    <input
+                      type="text"
+                      id="parent_name"
+                      value="Jennifer Johnson"
+                      class="mt-1 block w-full bg-slate-700 border border-slate-600 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-cyan-500 focus:border-cyan-500"
+                    />
+                  </div>
+                  <div>
+                    <label
+                      for="student_name_input"
+                      class="block text-sm font-medium text-slate-300"
+                      >Student Name</label
+                    >
+                    <input
+                      type="text"
+                      id="student_name_input"
+                      value="Michael Johnson"
+                      class="mt-1 block w-full bg-slate-700 border border-slate-600 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-cyan-500 focus:border-cyan-500"
+                    />
+                  </div>
+                  <div class="grid grid-cols-3 gap-4">
+                    <div>
+                      <label
+                        for="student_class"
+                        class="block text-sm font-medium text-slate-300"
+                        >Class</label
+                      >
+                      <input
+                        type="text"
+                        id="student_class"
+                        value="11th"
+                        class="mt-1 block w-full bg-slate-700 border border-slate-600 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-cyan-500 focus:border-cyan-500"
+                      />
+                    </div>
+                    <div>
+                      <label
+                        for="student_section"
+                        class="block text-sm font-medium text-slate-300"
+                        >Section</label
+                      >
+                      <input
+                        type="text"
+                        id="student_section"
+                        value="B"
+                        class="mt-1 block w-full bg-slate-700 border border-slate-600 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-cyan-500 focus:border-cyan-500"
+                      />
+                    </div>
+                    <div>
+                      <label
+                        for="roll_no_input"
+                        class="block text-sm font-medium text-slate-300"
+                        >Roll No.</label
+                      >
+                      <input
+                        type="text"
+                        id="roll_no_input"
+                        value="15262"
+                        class="mt-1 block w-full bg-slate-700 border border-slate-600 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-cyan-500 focus:border-cyan-500"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Fee Details -->
+              <div>
+                <h3 class="text-lg font-semibold text-cyan-400 mb-3">
+                  Fee Information
+                </h3>
+                <div class="space-y-4">
+                  <div>
+                    <label
+                      for="fee_description_input"
+                      class="block text-sm font-medium text-slate-300"
+                      >Fee Description</label
+                    >
+                    <input
+                      type="text"
+                      id="fee_description_input"
+                      value="Tuition Fee"
+                      class="mt-1 block w-full bg-slate-700 border border-slate-600 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-cyan-500 focus:border-cyan-500"
+                    />
+                  </div>
+                  <div class="grid grid-cols-2 gap-4">
+                    <div>
+                      <label
+                        for="fee_period"
+                        class="block text-sm font-medium text-slate-300"
+                        >Fee Period</label
+                      >
+                      <input
+                        type="text"
+                        id="fee_period"
+                        value="2025-2026"
+                        class="mt-1 block w-full bg-slate-700 border border-slate-600 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-cyan-500 focus:border-cyan-500"
+                      />
+                    </div>
+                    <div>
+                      <label
+                        for="fee_amount_input"
+                        class="block text-sm font-medium text-slate-300"
+                        >Amount</label
+                      >
+                      <input
+                        type="text"
+                        id="fee_amount_input"
+                        value="$3,850.00"
+                        class="mt-1 block w-full bg-slate-700 border border-slate-600 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-cyan-500 focus:border-cyan-500"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label
+                      for="amount_words_input"
+                      class="block text-sm font-medium text-slate-300"
+                      >Amount in Words</label
+                    >
+                    <input
+                      type="text"
+                      id="amount_words_input"
+                      value="Three Thousand Eight Hundred Fifty Dollars Only"
+                      class="mt-1 block w-full bg-slate-700 border border-slate-600 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-cyan-500 focus:border-cyan-500"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <!-- Payment Details -->
+              <div>
+                <h3 class="text-lg font-semibold text-cyan-400 mb-3">
+                  Payment Information
+                </h3>
+                <div class="space-y-4">
+                  <div>
+                    <label
+                      for="payment_mode_input"
+                      class="block text-sm font-medium text-slate-300"
+                      >Payment Mode</label
+                    >
+                    <input
+                      type="text"
+                      id="payment_mode_input"
+                      value="Cheque"
+                      class="mt-1 block w-full bg-slate-700 border border-slate-600 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-cyan-500 focus:border-cyan-500"
+                    />
+                  </div>
+                  <div>
+                    <label
+                      for="payment_reference"
+                      class="block text-sm font-medium text-slate-300"
+                      >Payment Reference</label
+                    >
+                    <input
+                      type="text"
+                      id="payment_reference"
+                      value="Cheque No: 840504, ICICI Bank"
+                      class="mt-1 block w-full bg-slate-700 border border-slate-600 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-cyan-500 focus:border-cyan-500"
+                    />
+                  </div>
+                  <div>
+                    <label
+                      for="payment_date_input"
+                      class="block text-sm font-medium text-slate-300"
+                      >Payment Date</label
+                    >
+                    <input
+                      type="text"
+                      id="payment_date_input"
+                      value="29/10/2025"
+                      class="mt-1 block w-full bg-slate-700 border border-slate-600 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-cyan-500 focus:border-cyan-500"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <!-- Buttons -->
+              <div
+                id="print-btn-container"
+                class="pt-6 border-t border-slate-600 space-y-4"
+              >
+                <button
+                  type="button"
+                  id="download-pdf-btn"
+                  class="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 focus:ring-offset-slate-800"
+                >
+                  Download as PDF
+                </button>
+                <button
+                  type="button"
+                  id="download-img-btn"
+                  class="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 focus:ring-offset-slate-800"
+                >
+                  Download as Image
+                </button>
+                <button
+                  type="button"
+                  id="download-zip-btn"
+                  class="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-orange-600 hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 focus:ring-offset-slate-800"
+                >
+                  Download as ZIP
+                </button>
+                <button
+                  type="reset"
+                  class="w-full flex justify-center py-3 px-4 border border-slate-500 rounded-md shadow-sm text-sm font-medium text-slate-200 bg-slate-600 hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-500 focus:ring-offset-slate-800"
+                >
+                  Reset Form
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      document.addEventListener("DOMContentLoaded", function () {
+        const form = document.getElementById("invoice-form");
+        const generateRandomBtn = document.getElementById(
+          "generate-random-data-btn"
+        );
+        const logoUploadInput = document.getElementById("logo-upload");
+        const invoiceLogoImg = document.getElementById("invoice-logo");
+        const logoText = document.getElementById("logo-text");
+        const downloadPdfBtn = document.getElementById("download-pdf-btn");
+        const downloadImgBtn = document.getElementById("download-img-btn");
+        const downloadZipBtn = document.getElementById("download-zip-btn");
+        const loadingOverlay = document.getElementById("loading-overlay");
+        const autoGenerateMultipleBtn = document.getElementById(
+          "auto-generate-multiple-btn"
+        );
+        const studentCountInput = document.getElementById("student-count");
+        const generationProgress = document.getElementById(
+          "generation-progress"
+        );
+        const progressBar = document.getElementById("progress-bar");
+        const progressText = document.getElementById("progress-text");
+
+        // Sample data pools
+        const firstNames = [
+          "James",
+          "John",
+          "Robert",
+          "Michael",
+          "William",
+          "David",
+          "Richard",
+          "Joseph",
+          "Thomas",
+          "Christopher",
+          "Daniel",
+          "Matthew",
+          "Anthony",
+          "Mark",
+          "Donald",
+          "Steven",
+          "Andrew",
+          "Paul",
+          "Joshua",
+          "Kenneth",
+          "Kevin",
+          "Brian",
+          "George",
+          "Timothy",
+          "Ronald",
+          "Edward",
+          "Jason",
+          "Jeffrey",
+          "Ryan",
+          "Jacob",
+          "Mary",
+          "Patricia",
+          "Jennifer",
+          "Linda",
+          "Barbara",
+          "Elizabeth",
+          "Susan",
+          "Jessica",
+          "Sarah",
+          "Karen",
+          "Lisa",
+          "Nancy",
+          "Betty",
+          "Margaret",
+          "Sandra",
+          "Ashley",
+          "Kimberly",
+          "Emily",
+          "Donna",
+          "Michelle",
+          "Carol",
+          "Amanda",
+          "Dorothy",
+          "Melissa",
+          "Deborah",
+          "Stephanie",
+          "Rebecca",
+          "Sharon",
+          "Laura",
+          "Cynthia",
+          "Kathleen",
+          "Amy",
+          "Angela",
+          "Shirley",
+          "Anna",
+          "Brenda",
+          "Pamela",
+          "Emma",
+          "Nicole",
+          "Helen",
+          "Samantha",
+          "Katherine",
+          "Christine",
+          "Debra",
+          "Rachel",
+          "Carolyn",
+          "Janet",
+          "Catherine",
+          "Maria",
+          "Heather",
+          "Diane",
+          "Ruth",
+          "Julie",
+          "Olivia",
+          "Joyce",
+          "Virginia",
+          "Victoria",
+          "Kelly",
+          "Lauren",
+          "Christina",
+          "Joan",
+          "Evelyn",
+          "Judith",
+          "Megan",
+          "Andrea",
+          "Cheryl",
+          "Hannah",
+          "Jacqueline",
+          "Martha",
+          "Gloria",
+        ];
+        const lastNames = [
+          "Smith",
+          "Johnson",
+          "Williams",
+          "Brown",
+          "Jones",
+          "Garcia",
+          "Miller",
+          "Davis",
+          "Rodriguez",
+          "Martinez",
+          "Hernandez",
+          "Lopez",
+          "Gonzalez",
+          "Wilson",
+          "Anderson",
+          "Thomas",
+          "Taylor",
+          "Moore",
+          "Jackson",
+          "Martin",
+          "Lee",
+          "Perez",
+          "Thompson",
+          "White",
+          "Harris",
+          "Sanchez",
+          "Clark",
+          "Ramirez",
+          "Lewis",
+          "Robinson",
+          "Walker",
+          "Young",
+          "Allen",
+          "King",
+          "Wright",
+          "Scott",
+          "Torres",
+          "Nguyen",
+          "Hill",
+          "Flores",
+          "Green",
+          "Adams",
+          "Nelson",
+          "Baker",
+          "Hall",
+          "Rivera",
+          "Campbell",
+          "Mitchell",
+          "Carter",
+          "Roberts",
+          "Gomez",
+          "Phillips",
+          "Evans",
+          "Turner",
+          "Diaz",
+          "Parker",
+          "Cruz",
+          "Edwards",
+          "Collins",
+          "Reyes",
+          "Stewart",
+          "Morris",
+          "Morales",
+          "Murphy",
+          "Cook",
+          "Rogers",
+          "Gutierrez",
+          "Ortiz",
+          "Morgan",
+          "Cooper",
+          "Peterson",
+          "Bailey",
+          "Reed",
+          "Kelly",
+          "Howard",
+          "Ramos",
+          "Kim",
+          "Cox",
+          "Ward",
+          "Richardson",
+          "Watson",
+          "Brooks",
+          "Chavez",
+          "Wood",
+          "James",
+          "Bennett",
+          "Gray",
+          "Mendoza",
+          "Ruiz",
+          "Hughes",
+          "Price",
+          "Alvarez",
+          "Castillo",
+          "Sanders",
+          "Patel",
+          "Myers",
+          "Long",
+          "Ross",
+          "Foster",
+          "Jimenez",
+          "Powell",
+          "Jenkins",
+          "Perry",
+          "Russell",
+          "Sullivan",
+          "Bell",
+        ];
+        const feeTypes = [
+          "Tuition Fee",
+          "Admission Fee",
+          "Development Fee",
+          "Library Fee",
+          "Laboratory Fee",
+          "Sports Fee",
+          "Transport Fee",
+          "Examination Fee",
+          "Computer Fee",
+          "Art & Craft Fee",
+        ];
+        const paymentModes = [
+          "UPI",
+          "Credit Card",
+          "Bank Transfer",
+          "Cash",
+          "Cheque",
+          "Online Transfer",
+        ];
+        const classes = ["9th", "10th", "11th", "12th"];
+        const sections = ["A", "B", "C", "D", "E"];
+        const banks = [
+          "Chase",
+          "Bank of America",
+          "Wells Fargo",
+          "Citibank",
+          "US Bank",
+          "PNC Bank",
+          "Capital One",
+          "TD Bank",
+        ];
+
+        // Institution data pools for randomization
+        const institutionTypes = [
+          "Institute",
+          "University",
+          "College",
+          "School",
+          "Academy",
+          "International School",
+          "Public School",
+          "Private School",
+        ];
+        const institutionNames = [
+          "Dallas",
+          "Houston",
+          "Austin",
+          "San Antonio",
+          "Fort Worth",
+          "El Paso",
+          "Arlington",
+          "Corpus Christi",
+          "Plano",
+          "Laredo",
+          "Lubbock",
+          "Irving",
+          "Garland",
+          "Frisco",
+          "McKinney",
+          "Amarillo",
+          "Grand Prairie",
+          "Brownsville",
+          "Pasadena",
+          "Mesquite",
+        ];
+        const institutionSuffixes = [
+          "of Technology",
+          "of Science",
+          "of Engineering",
+          "of Management",
+          "of Arts",
+          "of Commerce",
+          "of Education",
+          "of Medicine",
+          "of Law",
+          "of Agriculture",
+        ];
+        const cities = [
+          "Dallas",
+          "Houston",
+          "Austin",
+          "San Antonio",
+          "Fort Worth",
+          "El Paso",
+          "Arlington",
+          "Corpus Christi",
+          "Plano",
+          "Laredo",
+          "Lubbock",
+          "Irving",
+          "Garland",
+          "Frisco",
+          "McKinney",
+          "Amarillo",
+          "Grand Prairie",
+          "Brownsville",
+          "Pasadena",
+          "Mesquite",
+          "Killeen",
+          "Waco",
+          "Denton",
+          "Midland",
+          "Abilene",
+          "Beaumont",
+          "Round Rock",
+          "Odessa",
+          "Richardson",
+          "Tyler",
+        ];
+        const states = [
+          "Texas",
+          "California",
+          "Florida",
+          "New York",
+          "Pennsylvania",
+          "Illinois",
+          "Ohio",
+          "Georgia",
+          "North Carolina",
+          "Michigan",
+          "New Jersey",
+          "Virginia",
+          "Washington",
+          "Arizona",
+          "Massachusetts",
+          "Tennessee",
+          "Indiana",
+          "Missouri",
+          "Maryland",
+          "Wisconsin",
+        ];
+
+        // Currency mapping
+        const currencyMap = {
+          INR: { symbol: "₹", name: "Rupees", code: "INR" },
+          USD: { symbol: "$", name: "Dollars", code: "USD" },
+          GBP: { symbol: "£", name: "Pounds", code: "GBP" },
+          JPY: { symbol: "¥", name: "Yen", code: "JPY" },
+          KHR: { symbol: "៛", name: "Riel", code: "KHR" },
+          IDR: { symbol: "Rp", name: "Rupiah", code: "IDR" },
+          KRW: { symbol: "₩", name: "Won", code: "KRW" },
+          BRL: { symbol: "R$", name: "Reais", code: "BRL" },
+          EUR: { symbol: "€", name: "Euros", code: "EUR" },
+          CAD: { symbol: "C$", name: "Canadian Dollars", code: "CAD" },
+          AUD: { symbol: "A$", name: "Australian Dollars", code: "AUD" },
+          SGD: { symbol: "S$", name: "Singapore Dollars", code: "SGD" },
+        };
+
+        const mapping = {
+          institution_name: "institution-name",
+          full_institution_name: "full-institution-name",
+          institution_address: "institution-address",
+          institution_contact: "institution-contact",
+          invoice_no: "invoice-no",
+          invoice_date: "invoice-date",
+          due_date: "due-date",
+          academic_year_input: "academic-year",
+          parent_name: "parent-name",
+          student_name_input: "student-name",
+          student_class: "student-class",
+          student_section: "student-section",
+          roll_no_input: "roll-no",
+          fee_description_input: "fee-description",
+          fee_period: "fee-period",
+          fee_amount_input: "fee-amount",
+          amount_words_input: "amount-words",
+          payment_mode_input: "payment-mode",
+          payment_reference: "payment-reference",
+          payment_date_input: "payment-date",
+        };
+
+        function showLoader() {
+          loadingOverlay.classList.remove("hidden");
+        }
+        function hideLoader() {
+          loadingOverlay.classList.add("hidden");
+        }
+
+        function toggleFlags() {
+          const showFlagsCheckbox = document.getElementById("show-flags");
+          const flagLeft = document.getElementById("flag-left");
+          const flagRight = document.getElementById("flag-right");
+
+          if (showFlagsCheckbox.checked) {
+            flagLeft.style.display = "inline-block";
+            flagRight.style.display = "inline-block";
+            changeFlagDesign();
+          } else {
+            flagLeft.style.display = "none";
+            flagRight.style.display = "none";
+          }
+        }
+
+        function changeFlagDesign() {
+          const countrySelect = document.getElementById("country-select");
+          const selectedCountry = countrySelect.value;
+          const flagLeft = document.getElementById("flag-left");
+          const flagRight = document.getElementById("flag-right");
+          const flagPath = `flags/${selectedCountry}.svg`;
+          function ensureImg(container) {
+            let img = container.querySelector("img.flag-img");
+            if (!img) {
+              img = document.createElement("img");
+              img.className = "flag-img";
+              container.innerHTML = "";
+              container.appendChild(img);
+            }
+            return img;
+          }
+
+          try {
+            const leftImg = ensureImg(flagLeft);
+            const rightImg = ensureImg(flagRight);
+            leftImg.src = flagPath;
+            leftImg.alt = `${selectedCountry} flag`;
+            rightImg.src = flagPath;
+            rightImg.alt = `${selectedCountry} flag`;
+            flagLeft.style.display = "inline-block";
+            flagRight.style.display = "inline-block";
+          } catch (error) {
+            console.warn("Failed to set flag image:", error);
+            flagLeft.style.display = "none";
+            flagRight.style.display = "none";
+          }
+        }
+
+        function drawSignature() {
+          const nameInput = document.getElementById("parent_name");
+          let name = nameInput.value || "Signature";
+          const nameParts = name.split(" ");
+          let signatureText =
+            nameParts.length > 1 ? nameParts[nameParts.length - 1] : name;
+
+          document.fonts
+            .load('40px "Ephesis"')
+            .then(() => {
+              const canvas = document.getElementById("signature-canvas");
+              if (!canvas) return;
+              const ctx = canvas.getContext("2d");
+              ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+              const grayValue = Math.floor(Math.random() * 50);
+              const color = `rgb(${grayValue}, ${grayValue}, ${grayValue})`;
+              ctx.fillStyle = color;
+
+              const fontSize = 32 + Math.random() * 4;
+              const yPos = 40 + Math.random() * 5;
+
+              ctx.font = `${fontSize}px "Ephesis", sans-serif`;
+              ctx.textAlign = "center";
+              const xPos = canvas.width / 2;
+              ctx.fillText(signatureText, xPos, yPos);
+            })
+            .catch((err) => {
+              console.warn(
+                "Signature font failed to load, using default.",
+                err
+              );
+              const canvas = document.getElementById("signature-canvas");
+              if (!canvas) return;
+              const ctx = canvas.getContext("2d");
+              ctx.clearRect(0, 0, canvas.width, canvas.height);
+              ctx.font = "italic 24px serif";
+              ctx.fillStyle = "#333";
+              ctx.textAlign = "center";
+              const xPos = canvas.width / 2;
+              ctx.fillText(signatureText, xPos, 35);
+            });
+        }
+
+        function updateInvoice() {
+          for (const formId in mapping) {
+            const formElement = document.getElementById(formId);
+            const invoiceElement = document.getElementById(mapping[formId]);
+            if (formElement && invoiceElement) {
+              invoiceElement.textContent = formElement.value;
+            }
+          }
+
+          // Update total amount to match fee amount
+          const feeAmount = document.getElementById("fee_amount_input").value;
+          document.getElementById("total-amount").textContent = feeAmount;
+
+          drawSignature();
+        }
+
+        function formatAmount(amount, currencyCode = "INR") {
+          const currency = currencyMap[currencyCode] || currencyMap["INR"];
+          const numAmount = parseFloat(
+            amount.toString().replace(/[^\d.-]/g, "")
+          );
+
+          if (currencyCode === "JPY" || currencyCode === "KRW") {
+            // For currencies without decimal places
+            return `${currency.symbol}${Math.round(
+              numAmount
+            ).toLocaleString()}`;
+          } else {
+            // For currencies with decimal places
+            return `${currency.symbol}${numAmount.toLocaleString("en-US", {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            })}`;
+          }
+        }
+
+        function numberToWords(num, currencyCode = "INR") {
+          const currency = currencyMap[currencyCode] || currencyMap["INR"];
+          const a = [
+            "",
+            "one ",
+            "two ",
+            "three ",
+            "four ",
+            "five ",
+            "six ",
+            "seven ",
+            "eight ",
+            "nine ",
+            "ten ",
+            "eleven ",
+            "twelve ",
+            "thirteen ",
+            "fourteen ",
+            "fifteen ",
+            "sixteen ",
+            "seventeen ",
+            "eighteen ",
+            "nineteen ",
+          ];
+          const b = [
+            "",
+            "",
+            "twenty",
+            "thirty",
+            "forty",
+            "fifty",
+            "sixty",
+            "seventy",
+            "eighty",
+            "ninety",
+          ];
+
+          if ((num = num.toString()).length > 9) return "overflow";
+          const n = ("000000000" + num)
+            .substr(-9)
+            .match(/^(\d{2})(\d{2})(\d{2})(\d{1})(\d{2})$/);
+          if (!n) return;
+          let str = "";
+          str +=
+            n[1] != 0
+              ? (a[Number(n[1])] || b[n[1][0]] + " " + a[n[1][1]]) + "crore "
+              : "";
+          str +=
+            n[2] != 0
+              ? (a[Number(n[2])] || b[n[2][0]] + " " + a[n[2][1]]) + "lakh "
+              : "";
+          str +=
+            n[3] != 0
+              ? (a[Number(n[3])] || b[n[3][0]] + " " + a[n[3][1]]) + "thousand "
+              : "";
+          str +=
+            n[4] != 0
+              ? (a[Number(n[4])] || b[n[4][0]] + " " + a[n[4][1]]) + "hundred "
+              : "";
+          str +=
+            n[5] != 0
+              ? (str != "" ? "and " : "") +
+                (a[Number(n[5])] || b[n[5][0]] + " " + a[n[5][1]])
+              : "";
+
+          str = str.charAt(0).toUpperCase() + str.slice(1);
+          return str.trim() + ` ${currency.name} Only`;
+        }
+
+        function handleCurrencyChange() {
+          const currencySelect = document.getElementById("currency-select");
+          const selectedCurrency = currencySelect.value;
+          const feeAmountInput = document.getElementById("fee_amount_input");
+          const amountWordsInput =
+            document.getElementById("amount_words_input");
+
+          // Get current amount value
+          const currentAmount = feeAmountInput.value;
+          const numericAmount = parseFloat(
+            currentAmount.replace(/[^\d.-]/g, "")
+          );
+
+          if (!isNaN(numericAmount)) {
+            // Update amount with new currency symbol
+            const formattedAmount = formatAmount(
+              numericAmount,
+              selectedCurrency
+            );
+            feeAmountInput.value = formattedAmount;
+
+            // Update amount in words
+            const amountInWords = numberToWords(
+              Math.floor(numericAmount),
+              selectedCurrency
+            );
+            amountWordsInput.value = amountInWords;
+
+            // Update the invoice display
+            updateInvoice();
+          }
+        }
+
+        function generateRandomData() {
+          const getRandomItem = (arr) =>
+            arr[Math.floor(Math.random() * arr.length)];
+          const selectedCurrency =
+            document.getElementById("currency-select").value;
+
+          const randomAmount = Math.floor(3000 + Math.random() * 2000); // $3,000 - $5,000
+          const formattedAmount = formatAmount(randomAmount, selectedCurrency);
+
+          // Generate invoice number
+          const invoiceNum = `INV-2025-${Math.floor(
+            10000 + Math.random() * 90000
+          )}`;
+          document.getElementById("invoice_no").value = invoiceNum;
+
+          // Generate dates
+          const today = new Date();
+          const invoiceDate = today.toLocaleDateString("en-GB");
+          document.getElementById("invoice_date").value = invoiceDate;
+          document.getElementById("due_date").value = invoiceDate;
+          document.getElementById("payment_date_input").value = invoiceDate;
+
+          // Generate student data
+          const studentFirst = getRandomItem(firstNames);
+          const studentLast = getRandomItem(lastNames);
+          const studentFullName = `${studentFirst} ${studentLast}`;
+          document.getElementById("student_name_input").value = studentFullName;
+          document.getElementById("parent_name").value = `${getRandomItem(
+            firstNames
+          )} ${studentLast}`;
+
+          // Generate class data
+          document.getElementById("student_class").value =
+            getRandomItem(classes);
+          document.getElementById("student_section").value =
+            getRandomItem(sections);
+          document.getElementById("roll_no_input").value = Math.floor(
+            10000 + Math.random() * 90000
+          );
+
+          // Generate fee data
+          document.getElementById("fee_description_input").value =
+            getRandomItem(feeTypes);
+          document.getElementById("fee_amount_input").value = formattedAmount;
+          document.getElementById("amount_words_input").value = numberToWords(
+            randomAmount,
+            selectedCurrency
+          );
+
+          // Generate payment data
+          const mode = getRandomItem(paymentModes);
+          document.getElementById("payment_mode_input").value = mode;
+
+          let reference = "";
+          if (mode === "Cheque") {
+            reference = `Cheque No: ${Math.floor(
+              100000 + Math.random() * 900000
+            )}, ${getRandomItem(["ICICI", "HDFC", "SBI", "Axis", "PNB"])} Bank`;
+          } else if (mode === "UPI") {
+            reference = `UPI Ref: ${Date.now()}${Math.floor(
+              Math.random() * 1000
+            )}`;
+          } else {
+            reference = `${mode} Ref: ${Date.now()}${Math.floor(
+              Math.random() * 1000
+            )}`;
+          }
+          document.getElementById("payment_reference").value = reference;
+
+          updateInvoice();
+        }
+
+        async function autoGenerateMultipleInvoices() {
+          const studentCount = parseInt(studentCountInput.value);
+          if (studentCount < 1 || studentCount > 20) {
+            alert("Please enter a number between 1 and 20");
+            return;
+          }
+
+          showLoader();
+          generationProgress.classList.remove("hidden");
+          autoGenerateMultipleBtn.disabled = true;
+          autoGenerateMultipleBtn.textContent = "Generating...";
+
+          const generatedInvoices = [];
+
+          try {
+            for (let i = 0; i < studentCount; i++) {
+              // Update progress
+              const progress = ((i + 1) / studentCount) * 100;
+              progressBar.style.width = `${progress}%`;
+              progressText.textContent = `Generating invoice ${
+                i + 1
+              } of ${studentCount}...`;
+
+              // Generate random data for this student
+              const invoiceData = generateRandomInvoiceData();
+
+              // Create a temporary invoice element
+              const { container: tempInvoiceContainer, target: captureTarget } =
+                await createTempInvoice(invoiceData);
+
+              // Wait for flags and signature to load
+              await new Promise((resolve) => setTimeout(resolve, 500));
+
+              // Capture the invoice as canvas
+              const canvas = await html2canvas(captureTarget, {
+                scale: 2,
+                useCORS: true,
+                allowTaint: true,
+                letterRendering: true,
+                backgroundColor: "#ffffff",
+              });
+
+              generatedInvoices.push({
+                canvas: canvas,
+                data: invoiceData,
+                filename: `Invoice-${invoiceData.invoiceNo.replace(
+                  /[^a-zA-Z0-9]/g,
+                  "-"
+                )}-${invoiceData.studentName.replace(/[^a-zA-Z0-9]/g, "-")}`,
+              });
+
+              // Clean up temporary element
+              tempInvoiceContainer.remove();
+
+              // Small delay to prevent browser freezing
+              await new Promise((resolve) => setTimeout(resolve, 100));
+            }
+
+            // Download all invoices as ZIP
+            await downloadMultipleInvoices(generatedInvoices);
+          } catch (error) {
+            console.error("Error generating multiple invoices:", error);
+            alert("Error generating invoices. Please try again.");
+          } finally {
+            hideLoader();
+            generationProgress.classList.add("hidden");
+            autoGenerateMultipleBtn.disabled = false;
+            autoGenerateMultipleBtn.textContent =
+              "Auto Generate Multiple Invoices";
+            progressBar.style.width = "0%";
+          }
+        }
+
+        function generateRandomInvoiceData() {
+          const getRandomItem = (arr) =>
+            arr[Math.floor(Math.random() * arr.length)];
+          const selectedCurrency =
+            document.getElementById("currency-select").value;
+
+          const randomAmount = Math.floor(3000 + Math.random() * 2000); // $3,000 - $5,000
+          const formattedAmount = formatAmount(randomAmount, selectedCurrency);
+
+          // Generate unique invoice number
+          const invoiceNum = `INV-2025-${Math.floor(
+            10000 + Math.random() * 90000
+          )}`;
+
+          // Generate dates
+          const today = new Date();
+          const invoiceDate = today.toLocaleDateString("en-GB");
+
+          // Generate random institution data
+          const institutionName = getRandomItem(institutionNames);
+          const institutionType = getRandomItem(institutionTypes);
+          const institutionSuffix = getRandomItem(institutionSuffixes);
+          const city = getRandomItem(cities);
+          const state = getRandomItem(states);
+          const pincode = Math.floor(100000 + Math.random() * 900000);
+
+          const fullInstitutionName = `${institutionName} ${institutionType} ${institutionSuffix}`;
+          const institutionAddress = `${city}, ${state} ${pincode}, USA`;
+          const institutionContact = `Phone: +1 (${Math.floor(
+            200 + Math.random() * 800
+          )}) ${Math.floor(
+            200 + Math.random() * 800
+          )}-${Math.floor(
+            1000 + Math.random() * 9000
+          )} | Email: info@${institutionName.toLowerCase()}.edu`;
+
+          // Generate student data
+          const studentFirst = getRandomItem(firstNames);
+          const studentLast = getRandomItem(lastNames);
+          const studentFullName = `${studentFirst} ${studentLast}`;
+          const parentName = `${getRandomItem(firstNames)} ${studentLast}`;
+
+          // Generate class data
+          const studentClass = getRandomItem(classes);
+          const studentSection = getRandomItem(sections);
+          const rollNo = Math.floor(10000 + Math.random() * 90000);
+
+          // Generate fee data
+          const feeDescription = getRandomItem(feeTypes);
+
+          // Generate payment data
+          const mode = getRandomItem(paymentModes);
+          let reference = "";
+          if (mode === "Cheque") {
+            reference = `Cheque No: ${Math.floor(
+              100000 + Math.random() * 900000
+            )}, ${getRandomItem(banks)} Bank`;
+          } else if (mode === "UPI") {
+            reference = `UPI Ref: ${Date.now()}${Math.floor(
+              Math.random() * 1000
+            )}`;
+          } else {
+            reference = `${mode} Ref: ${Date.now()}${Math.floor(
+              Math.random() * 1000
+            )}`;
+          }
+
+          return {
+            // Institution data
+            institutionName: fullInstitutionName,
+            fullInstitutionName: fullInstitutionName,
+            institutionAddress: institutionAddress,
+            institutionContact: institutionContact,
+            academicYear: `${2024 + Math.floor(Math.random() * 2)}-${
+              2025 + Math.floor(Math.random() * 2)
+            }`,
+
+            // Invoice data
+            invoiceNo: invoiceNum,
+            invoiceDate: invoiceDate,
+            dueDate: invoiceDate,
+            paymentDate: invoiceDate,
+
+            // Student data
+            studentName: studentFullName,
+            parentName: parentName,
+            studentClass: studentClass,
+            studentSection: studentSection,
+            rollNo: rollNo,
+
+            // Fee data
+            feeDescription: feeDescription,
+            feeAmount: formattedAmount,
+            amountWords: numberToWords(randomAmount, selectedCurrency),
+
+            // Payment data
+            paymentMode: mode,
+            paymentReference: reference,
+          };
+        }
+
+        async function createTempInvoice(data) {
+          // Match the exact rendered size of the on-screen invoice for consistent exports
+          const liveInvoice = document.getElementById("invoice-to-export");
+          const liveRect = liveInvoice.getBoundingClientRect();
+
+          // Create a temporary container
+          const tempContainer = document.createElement("div");
+          tempContainer.style.position = "absolute";
+          tempContainer.style.left = "-9999px";
+          tempContainer.style.top = "0";
+          tempContainer.style.width = `${Math.ceil(liveRect.width)}px`;
+          tempContainer.style.backgroundColor = "white";
+
+          // Clone the invoice structure and populate with data
+          const clonedInvoice = liveInvoice.cloneNode(true);
+          clonedInvoice.style.width = `${Math.ceil(liveRect.width)}px`;
+
+          // Update all the data in the cloned invoice
+          updateInvoiceWithData(clonedInvoice, data);
+
+          // Apply flags to the cloned invoice
+          applyFlagsToClonedInvoice(clonedInvoice);
+
+          // Apply signature to the cloned invoice
+          await applySignatureToClonedInvoice(clonedInvoice, data.parentName);
+
+          tempContainer.appendChild(clonedInvoice);
+          document.body.appendChild(tempContainer);
+
+          return { container: tempContainer, target: clonedInvoice };
+        }
+
+        function updateInvoiceWithData(invoiceElement, data) {
+          // Update all the fields with the provided data
+          const fields = {
+            // Institution fields
+            "institution-name": data.institutionName,
+            "full-institution-name": data.fullInstitutionName,
+            "institution-address": data.institutionAddress,
+            "institution-contact": data.institutionContact,
+            "academic-year": data.academicYear,
+
+            // Invoice fields
+            "invoice-no": data.invoiceNo,
+            "invoice-date": data.invoiceDate,
+            "due-date": data.dueDate,
+
+            // Student fields
+            "parent-name": data.parentName,
+            "student-name": data.studentName,
+            "student-class": data.studentClass,
+            "student-section": data.studentSection,
+            "roll-no": data.rollNo,
+
+            // Fee fields
+            "fee-description": data.feeDescription,
+            "fee-amount": data.feeAmount,
+            "total-amount": data.feeAmount,
+            "amount-words": data.amountWords,
+
+            // Payment fields
+            "payment-mode": data.paymentMode,
+            "payment-reference": data.paymentReference,
+            "payment-date": data.paymentDate,
+          };
+
+          for (const [id, value] of Object.entries(fields)) {
+            const element = invoiceElement.querySelector(`#${id}`);
+            if (element) {
+              element.textContent = value;
+            }
+          }
+        }
+
+        function applyFlagsToClonedInvoice(clonedInvoice) {
+          const showFlagsCheckbox = document.getElementById("show-flags");
+          const countrySelect = document.getElementById("country-select");
+          const selectedCountry = countrySelect.value;
+          const flagLeft = clonedInvoice.querySelector("#flag-left");
+          const flagRight = clonedInvoice.querySelector("#flag-right");
+          const flagPath = `flags/${selectedCountry}.svg`;
+          if (showFlagsCheckbox.checked && flagLeft && flagRight) {
+            const leftImg =
+              flagLeft.querySelector("img.flag-img") ||
+              document.createElement("img");
+            const rightImg =
+              flagRight.querySelector("img.flag-img") ||
+              document.createElement("img");
+            leftImg.className = "flag-img";
+            rightImg.className = "flag-img";
+            leftImg.src = flagPath;
+            leftImg.alt = `${selectedCountry} flag`;
+            rightImg.src = flagPath;
+            rightImg.alt = `${selectedCountry} flag`;
+            flagLeft.innerHTML = "";
+            flagRight.innerHTML = "";
+            flagLeft.appendChild(leftImg);
+            flagRight.appendChild(rightImg);
+            flagLeft.style.display = "inline-block";
+            flagRight.style.display = "inline-block";
+          } else if (flagLeft && flagRight) {
+            flagLeft.style.display = "none";
+            flagRight.style.display = "none";
+          }
+        }
+
+        async function applySignatureToClonedInvoice(
+          clonedInvoice,
+          parentName
+        ) {
+          const signatureCanvas =
+            clonedInvoice.querySelector("#signature-canvas");
+          if (!signatureCanvas) return;
+
+          let name = parentName || "Signature";
+          const nameParts = name.split(" ");
+          let signatureText =
+            nameParts.length > 1 ? nameParts[nameParts.length - 1] : name;
+
+          try {
+            await document.fonts.load('40px "Ephesis"');
+            const ctx = signatureCanvas.getContext("2d");
+            ctx.clearRect(0, 0, signatureCanvas.width, signatureCanvas.height);
+
+            const grayValue = Math.floor(Math.random() * 50);
+            const color = `rgb(${grayValue}, ${grayValue}, ${grayValue})`;
+            ctx.fillStyle = color;
+
+            const fontSize = 32 + Math.random() * 4;
+            const yPos = 40 + Math.random() * 5;
+
+            ctx.font = `${fontSize}px "Ephesis", sans-serif`;
+            ctx.textAlign = "center";
+            const xPos = signatureCanvas.width / 2;
+            ctx.fillText(signatureText, xPos, yPos);
+          } catch (err) {
+            console.warn("Signature font failed to load, using default.", err);
+            const ctx = signatureCanvas.getContext("2d");
+            ctx.clearRect(0, 0, signatureCanvas.width, signatureCanvas.height);
+            ctx.font = "italic 24px serif";
+            ctx.fillStyle = "#333";
+            ctx.textAlign = "center";
+            const xPos = signatureCanvas.width / 2;
+            ctx.fillText(signatureText, xPos, 35);
+          }
+        }
+
+        async function downloadMultipleInvoices(invoices) {
+          try {
+            const zip = new JSZip();
+
+            // Get the institution name from the form
+            const institutionName =
+              document.getElementById("institution_name").value;
+
+            // Create text file content
+            let txtContent = "";
+            // Include country as first field using the visible option text (e.g., India)
+            const countrySelect = document.getElementById("country-select");
+            const countryText =
+              countrySelect.options[countrySelect.selectedIndex]?.text || "";
+            for (const invoice of invoices) {
+              const data = invoice.data;
+              const studentNameParts = data.studentName.split(" ");
+              const firstName = studentNameParts[0] || "";
+              const lastName = studentNameParts.slice(1).join(" ") || "";
+
+              // Format: country|university name|first name|last name|blank birth of date|blank email
+              txtContent += `${countryText}|${institutionName}|${firstName}|${lastName}||\n`;
+            }
+
+            // Add the text file to the zip
+            zip.file("student_data.txt", txtContent);
+
+            for (const invoice of invoices) {
+              // Add PNG file
+              const pngBlob = await new Promise((resolve) =>
+                invoice.canvas.toBlob(resolve, "image/png", 1.0)
+              );
+              zip.file(`${invoice.filename}.png`, pngBlob);
+
+              // Add PDF file
+              const { jsPDF } = window.jspdf;
+              const imgData = invoice.canvas.toDataURL("image/jpeg", 0.72);
+              const imgProps = {
+                width: invoice.canvas.width,
+                height: invoice.canvas.height,
+              };
+
+              const mmPerPixel = 25.4 / 96;
+              const pdfWidth = imgProps.width * mmPerPixel;
+              const pdfHeight = imgProps.height * mmPerPixel;
+
+              const pdf = new jsPDF({
+                orientation: pdfWidth > pdfHeight ? "landscape" : "portrait",
+                unit: "mm",
+                format: [pdfWidth, pdfHeight],
+              });
+
+              pdf.addImage(imgData, "JPEG", 0, 0, pdfWidth, pdfHeight);
+              const pdfBlob = pdf.output("blob");
+              zip.file(`${invoice.filename}.pdf`, pdfBlob);
+            }
+
+            const zipContent = await zip.generateAsync({ type: "blob" });
+            const timestamp = new Date()
+              .toISOString()
+              .slice(0, 19)
+              .replace(/:/g, "-");
+            saveAs(zipContent, `multiple-invoices-${timestamp}.zip`);
+          } catch (error) {
+            console.error("Error creating ZIP file:", error);
+            throw error;
+          }
+        }
+
+        function handleLogoUpload(event) {
+          const file = event.target.files[0];
+          if (file) {
+            const reader = new FileReader();
+            reader.onload = function (e) {
+              invoiceLogoImg.src = e.target.result;
+              invoiceLogoImg.classList.remove("hidden");
+              logoText.classList.add("hidden");
+            };
+            reader.readAsDataURL(file);
+          }
+        }
+
+        async function captureInvoiceCanvas() {
+          const invoiceElement = document.getElementById("invoice-to-export");
+          const logoImg = document.getElementById("invoice-logo");
+
+          try {
+            await document.fonts.ready;
+
+            if (logoImg && logoImg.src && !logoImg.complete) {
+              await new Promise((resolve) => {
+                logoImg.onload = resolve;
+                logoImg.onerror = resolve;
+              });
+            }
+
+            await new Promise((resolve) => setTimeout(resolve, 500));
+            window.scrollTo(0, 0);
+
+            return await html2canvas(invoiceElement, {
+              scale: 2,
+              useCORS: true,
+              allowTaint: true,
+              letterRendering: true,
+              backgroundColor: "#ffffff",
+            });
+          } catch (error) {
+            console.error("Canvas capture error:", error);
+            throw error;
+          }
+        }
+
+        async function downloadAsPdf() {
+          showLoader();
+          try {
+            const canvas = await captureInvoiceCanvas();
+            const { jsPDF } = window.jspdf;
+            const invoiceNo =
+              document.getElementById("invoice-no").textContent || "invoice";
+            const studentName =
+              document.getElementById("student-name").textContent || "student";
+
+            const imgData = canvas.toDataURL("image/jpeg", 0.72);
+            const imgProps = { width: canvas.width, height: canvas.height };
+
+            // Convert pixels to mm (assuming 96 DPI)
+            const mmPerPixel = 25.4 / 96;
+            const pdfWidth = imgProps.width * mmPerPixel;
+            const pdfHeight = imgProps.height * mmPerPixel;
+
+            // Create PDF with actual invoice dimensions
+            const pdf = new jsPDF({
+              orientation: pdfWidth > pdfHeight ? "landscape" : "portrait",
+              unit: "mm",
+              format: [pdfWidth, pdfHeight],
+            });
+
+            // Add image at full size with no scaling
+            pdf.addImage(imgData, "JPEG", 0, 0, pdfWidth, pdfHeight);
+
+            const cleanInvoiceNo = invoiceNo.replace(/[^a-zA-Z0-9]/g, "-");
+            const cleanStudentName = studentName.replace(/[^a-zA-Z0-9]/g, "-");
+            pdf.save(`Invoice-${cleanInvoiceNo}-${cleanStudentName}.pdf`);
+          } catch (err) {
+            console.error("PDF Generation Error:", err);
+            alert("Error generating PDF. Please try again.");
+          } finally {
+            hideLoader();
+          }
+        }
+
+        async function downloadAsImage() {
+          showLoader();
+          try {
+            const canvas = await captureInvoiceCanvas();
+            const invoiceNo =
+              document.getElementById("invoice-no").textContent || "invoice";
+            const studentName =
+              document.getElementById("student-name").textContent || "student";
+
+            const link = document.createElement("a");
+            const cleanInvoiceNo = invoiceNo.replace(/[^a-zA-Z0-9]/g, "-");
+            const cleanStudentName = studentName.replace(/[^a-zA-Z0-9]/g, "-");
+            link.download = `Invoice-${cleanInvoiceNo}-${cleanStudentName}.png`;
+            link.href = canvas.toDataURL("image/png", 1.0);
+            link.click();
+          } catch (err) {
+            console.error("Image Generation Error:", err);
+            alert("Error generating image. Please try again.");
+          } finally {
+            hideLoader();
+          }
+        }
+
+        async function downloadAsZip() {
+          showLoader();
+          try {
+            const canvas = await captureInvoiceCanvas();
+            const invoiceNo =
+              document.getElementById("invoice-no").textContent || "invoice";
+            const studentName =
+              document.getElementById("student-name").textContent || "student";
+            const cleanInvoiceNo = invoiceNo.replace(/[^a-zA-Z0-9]/g, "-");
+            const cleanStudentName = studentName.replace(/[^a-zA-Z0-9]/g, "-");
+
+            const pngBlob = await new Promise((resolve) =>
+              canvas.toBlob(resolve, "image/jpeg", 0.72)
+            );
+
+            const { jsPDF } = window.jspdf;
+            const imgData = canvas.toDataURL("image/jpeg", 0.72);
+            const imgProps = { width: canvas.width, height: canvas.height };
+
+            // Convert pixels to mm (assuming 96 DPI)
+            const mmPerPixel = 25.4 / 96;
+            const pdfWidth = imgProps.width * mmPerPixel;
+            const pdfHeight = imgProps.height * mmPerPixel;
+
+            // Create PDF with actual invoice dimensions
+            const pdf = new jsPDF({
+              orientation: pdfWidth > pdfHeight ? "landscape" : "portrait",
+              unit: "mm",
+              format: [pdfWidth, pdfHeight],
+            });
+
+            // Add image at full size with no scaling
+            pdf.addImage(imgData, "JPEG", 0, 0, pdfWidth, pdfHeight);
+
+            const pdfBlob = pdf.output("blob");
+
+            const zip = new JSZip();
+            zip.file(
+              `Invoice-${cleanInvoiceNo}-${cleanStudentName}.png`,
+              pngBlob
+            );
+            zip.file(
+              `Invoice-${cleanInvoiceNo}-${cleanStudentName}.pdf`,
+              pdfBlob
+            );
+
+            const zipContent = await zip.generateAsync({ type: "blob" });
+            saveAs(
+              zipContent,
+              `Invoice-Package-${cleanInvoiceNo}-${cleanStudentName}.zip`
+            );
+          } catch (err) {
+            console.error("ZIP Generation Error:", err);
+            alert("Error generating ZIP file. Please try again.");
+          } finally {
+            hideLoader();
+          }
+        }
+
+        // Event Listeners
+        form.addEventListener("input", updateInvoice);
+        generateRandomBtn.addEventListener("click", generateRandomData);
+        autoGenerateMultipleBtn.addEventListener(
+          "click",
+          autoGenerateMultipleInvoices
+        );
+        logoUploadInput.addEventListener("change", handleLogoUpload);
+        downloadPdfBtn.addEventListener("click", downloadAsPdf);
+        downloadImgBtn.addEventListener("click", downloadAsImage);
+        downloadZipBtn.addEventListener("click", downloadAsZip);
+        document
+          .getElementById("show-flags")
+          .addEventListener("change", toggleFlags);
+        document
+          .getElementById("country-select")
+          .addEventListener("change", () => changeFlagDesign());
+        document
+          .getElementById("currency-select")
+          .addEventListener("change", handleCurrencyChange);
+
+        // Initial load
+        invoiceLogoImg.src = "dc-logo.png?v=" + Date.now();
+        invoiceLogoImg.classList.remove("hidden");
+        logoText.classList.add("hidden");
+        updateInvoice();
+        toggleFlags();
+
+        form.addEventListener("reset", () => {
+          setTimeout(() => {
+            invoiceLogoImg.src = "Collage Logo/Logo.png";
+            invoiceLogoImg.classList.remove("hidden");
+            logoText.classList.add("hidden");
+            logoUploadInput.value = "";
+            document.getElementById("country-select").value = "india";
+            document.getElementById("currency-select").value = "INR";
+            updateInvoice();
+            toggleFlags();
+          }, 0);
+        });
+      });
+    </script>
+  </body>
+</html>
